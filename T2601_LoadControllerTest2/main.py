@@ -12,6 +12,15 @@ import reg
 
 wd_clr_pin = machine.Pin(14, machine.Pin.OUT);
 
+pin_pwr1_off    = machine.Pin(18, machine.Pin.IN);
+pin_pwr2_off    = machine.Pin(21, machine.Pin.IN);
+pin_pa3         = machine.Pin(20, machine.Pin.IN);
+pin_pa6         = machine.Pin(16, machine.Pin.IN);
+pin_pa7         = machine.Pin(17, machine.Pin.IN);
+
+
+
+
 EDOG_ADDR = 0x24
 sdaPIN=machine.Pin(4)
 sclPIN=machine.Pin(5)
@@ -78,7 +87,36 @@ def i2c_rd_eeprom_16_bytes(addr):
     time.sleep(0.2)
     return i2c_rd_16_bytes(reg.REG_EEPROM_BUFF)
 
+def load_sw_power_on(pwr1, pwr2):
+    bm = 0
+    if (not pwr1):
+        bm = bm | 0x01  
+    if (not pwr2): 
+        bm = bm | 0x02   
+    i2c_wr_u8(reg.REG_LOAD_SW, bm)
+    print ('Load SW Power: ', bm)   
+    
+
+if True:
+    i2c_wr_u32( reg.REG_SLEEP_TIME, 2000)
+    time.sleep(1)    
+    i2c_wr_u8(reg.REG_SLEEP_STATE, reg.SLEEP_ACTIVATED)
+    while True:
+        time.sleep(1)
+
+
+
 interval = 2000
+print()
+while True: 
+    load_sw_power_on(True, True)
+    time.sleep(0.1) 
+    load_sw_power_on(False, True)
+    time.sleep(0.1)               
+    load_sw_power_on(True, False)
+    time.sleep(0.1)       
+    load_sw_power_on(False, False)
+    time.sleep(0.1)   
 
 b16_wr = bytearray(0x10 + i*2 for i in range(16))
 b16_rd = [[0]]*16
@@ -87,32 +125,8 @@ do_wait = True
 
 i2c_wr_eeprom_16_bytes(0x20, b16_wr)
 b16_rd = i2c_rd_eeprom_16_bytes(0x18)   
-print(b16_wr,'->',b16_rd)
+print(list(b16_wr),'->',list(b16_rd))
 sys.exit()
-
-wr_16_bytes(reg.REG_EEPROM_BUFF, b16_wr)
-i2c_wr_u8(reg.REG_EEPROM_ADDR, 0x20)
-i2c_wr_u8(reg.REG_EEPROM_STATE, reg.EEPROM_WR_BUFF)
-while (i2c_rd_u8(reg.REG_EEPROM_STATE)) != reg.EEPROM_READY:
-    time.sleep(0.1)
-i2c_wr_u8(reg.REG_EEPROM_STATE, reg.EEPROM_IDLE)
-i2c_wr_u8(reg.REG_EEPROM_ADDR, 0x28)
-i2c_rd_u8(reg.REG_EEPROM_ADDR)
-i2c_wr_u8(reg.REG_EEPROM_STATE, reg.EEPROM_RD_BUFF)
-while do_wait: 
-    ep_state = i2c_rd_u8(reg.REG_EEPROM_STATE)
-    if ep_state == reg.EEPROM_READY:
-        do_wait = False
-    else:
-        print(ep_state)
-        time.sleep(0.1)
-i2c_wr_u8(reg.REG_EEPROM_STATE, reg.EEPROM_IDLE)
-time.sleep(0.2)
-b16_rd = list(i2c_rd_16_bytes(reg.REG_EEPROM_BUFF))
-print(b16_rd)
-
-state = i2c_rd_u8(reg.REG_EEPROM_STATE)
-print(state)
 
 
 i2c_wr_u32(0x04, 706969)
